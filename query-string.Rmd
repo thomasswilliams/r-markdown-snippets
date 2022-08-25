@@ -1,0 +1,29 @@
+---
+title: "query-string.Rmd"
+subtitle: "Passing a query string value to R Markdown, see  https://thomasswilliams.github.io/development/r/2022/08/19/r-markdown-querystring.html"
+output: html_document
+runtime: shiny
+params:
+  name: "Sam"
+---
+
+```{r echo = FALSE}
+cat("Parameter \"name\" is", params$name)
+```
+
+```{r echo = FALSE}
+# get the value of query string parameter "name"
+# if missing, will be NULL
+# "session$" is special Shiny variable (ignore "no variable...in scope" warning)
+# needs to be wrapped in reactive
+name <- shiny::reactive(shiny::parseQueryString(session$clientData$url_search)[["name"]])
+# output value of query string parameter "name"
+# need special syntax to get at reactive value, see
+# https://mastering-shiny.org/reactive-motivation.html
+cat("Query string \"name\" is:", shiny::isolate(name()))
+# can test if we have a value using is.null
+cat("Query string \"name\" is null?", is.null(shiny::isolate(name())))
+```
+
+<!-- output a link to take us to this same page, with a query string "name" of "Bob" -->
+<h2><a href="query-string.Rmd?name=Bob">Click to pass query string "name" of "Bob"</a></h2>
