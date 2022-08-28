@@ -1,6 +1,6 @@
 ---
 title: "dark-mode.Rmd"
-subtitle: "Basic dark mode with DT and Highcharter, see post at https://thomasswilliams.github.io/networking/2022/08/26/r-markdown-dark-mode-1.html"
+subtitle: "Basic dark mode with DT and Highcharter, see post at https://thomasswilliams.github.io/development/r/2022/08/26/r-markdown-dark-mode-1.html"
 author: "Thomas Williams <https://github.com/thomasswilliams>"
 output:
   html_document:
