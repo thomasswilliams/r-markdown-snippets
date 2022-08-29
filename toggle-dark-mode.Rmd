@@ -1,0 +1,236 @@
+---
+title: "toggle-dark-mode.Rmd"
+subtitle: "Toggle dark mode, see post at https://thomasswilliams.github.io/development/r/2022/08/30/r-markdown-dark-mode-2.html"
+author: "Thomas Williams <https://github.com/thomasswilliams>"
+output:
+  html_document:
+    theme: spacelab
+runtime: shiny
+---
+
+<!-- link to toggle between dark & light mode; default is light, so initial text should read "Dark"
+     adapted from https://github.com/dandalpiaz/markdown-pages -->
+<a href="#" role="button" onclick="toggleLight();return false;" id="light-toggle" class="contrast">🌗 Dark</a>
+
+``` {r global, echo = FALSE, message = FALSE, warning = FALSE}
+# reference a couple of packages for demo
+library(jsonlite)
+# DataTable
+# https://rstudio.github.io/DT/
+library(DT)
+# Highcharter wrapper for Highcharts
+# https://jkunst.com/highcharter/
+library(highcharter)
+```
+
+Size of RStudio daily builds by platform from <https://dailies.rstudio.com/rstudio/latest/index.json>
+
+```{r, echo = FALSE, message = FALSE, warning = FALSE, cache = TRUE, cache.extra = Sys.Date()}
+# get JSON from RStudio latest daily builds, cache for 1 day
+raw_json <- jsonlite::fromJSON(
+  "https://dailies.rstudio.com/rstudio/latest/index.json",
+  simplifyVector = FALSE
+)
+
+# get just the collection of platforms for RStudio Desktop
+# may be different from when I retrieved it in mid-August 2022
+# adapted from https://themockup.blog/posts/2020-12-13-extracting-json-from-websites-and-public-apis-with-r/
+platforms <- raw_json[["products"]][["electron"]][["platforms"]]
+
+# make collection of platforms into a dataframe
+# using "tibble" from TidyVerse
+df <- platforms %>%
+  tibble::enframe() %>%
+  # set attribute name as column name, value as value
+  tidyr::unnest_auto(value) %>%
+  # create a new column by joining OS and platform from "name...1" and "name...2"
+  tidyr::unite(name, c(name...2, name...1), sep = " ") %>%
+  # keep just the columns we want, name and size in bytes
+  dplyr::select(name, size)
+
+# add size in MB
+df$size_in_mb <- R.utils::hsize(df$size, units = "MB")
+```
+
+```{r, echo = FALSE}
+# placeholder for datatable
+DT::dataTableOutput("table", width = "100%", height = "auto")
+# output placeholder for highchart
+# adapted from https://github.com/jbkunst/highcharter-shiny/blob/master/01-get-started/app.R
+highcharter::highchartOutput("chart")
+
+# render data table
+output$table <- DT::renderDataTable({
+  # create a very basic datatable of OS name, size
+  dt <- DT::datatable(
+    df,
+    # no selection
+    selection = "none",
+    # options
+    options = list(
+      # wrap in Bootstrap 3 tags to put information & pagination controls
+      # on a row, then the table
+      # see https://datatables.net/reference/option/dom
+      dom = "<'row'<'col-sm-6'i><'col-sm-6'p>>t",
+      # low number of records visible to show paging
+      pageLength = 5L,
+      # specific styles for columns
+      columnDefs = list(
+        # hide size column
+        list(
+          visible = FALSE,
+          targets = c(0L, 2L)
+        )
+      )
+    ))
+  # return datatable
+  return(dt)
+})
+
+# render chart
+output$chart <- highcharter::renderHighchart({
+  # create chart
+  highcharter::highchart() %>%
+    # x axis is name
+    highcharter::hc_xAxis(categories = df$name) %>%
+    # series: size
+    highcharter::hc_add_series(
+      data = df,
+      name = "Size",
+      hcaes(x = name, y = size),
+      type = "column"
+    ) %>%
+    # no legend (single series only)
+    highcharter::hc_legend(
+      enabled = FALSE
+    ) %>%
+    # display size in MB in tooltip
+    # adapted from https://www.appsloveworld.com/highchart/100/2/r-highcharter-tooltip-customization-source-code
+    highcharter::hc_tooltip(
+      formatter = htmlwidgets::JS("function() {
+        return (this.x + '<br>' + this.point.size_in_mb)
+      }")
+    ) 
+})
+```
+
+Javascript to initially set the color, and set a class of "dark" or "light" when the toggle link is clicked:
+```{js}
+// function to toggle between light and dark mode
+// adapted from https://github.com/dandalpiaz/markdown-pages
+function toggleLight(forceDark) {
+  // get current theme (default to "light" if not found)
+  let current_theme = localStorage.getItem('mode') || 'light';
+  // set new theme to "dark" if current is "light"
+  let new_theme = (current_theme === 'light') ? 'dark' : 'light';
+  // special case: if "forceDark", set new theme to "dark"
+  if (forceDark) {
+    current_theme = 'light';
+    new_theme = 'dark';
+  }
+  // HTML document element
+  const htmlEl = document.documentElement;
+  // add class name for new theme to HTML element
+  htmlEl.classList.add(new_theme);
+  // remove class name of old theme from HTML element
+  htmlEl.classList.remove(current_theme);
+
+  // set local storage to new theme
+  localStorage.setItem('mode', new_theme);
+
+  // update theme switcher toggle with id of "light-toggle"
+  if (new_theme === 'dark') {
+    document.getElementById('light-toggle').innerHTML = '🌗 Light';
+  } else {
+    document.getElementById('light-toggle').innerHTML = '🌗 Dark';
+  }
+}
+
+// set theme on load, adapted from https://radek.io/posts/secret-darkmode-toggle/
+// first check "prefers-color-scheme"
+const osPreference = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+// next check local storage
+const preferredTheme = localStorage.getItem('mode') || osPreference;
+// if preferred theme is dark, force theme change, else leave as-is
+if (preferredTheme === 'dark') {
+  toggleLight(true);
+}
+```
+
+Below is the CSS used in this example:
+```{css}
+/* specific colors for light and dark mode
+   adapted from https://radek.io/posts/secret-darkmode-toggle/ */
+:root {
+  --background-color: #ffffff;
+  --font-color: #24272B;
+  /* can set other variables here as needed e.g. secondary font, secondary background etc. */
+}
+:root.dark {
+  --background-color: #24272B;
+  --font-color: #f6f6f6;
+}
+
+/* dark/light mode toggle link */
+#light-toggle {
+  /* top right-hand corner of page */
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  padding: 5px;
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none !important;
+}
+
+/* hacky dark mode code blocks */
+html.dark pre {
+  filter: invert(0.8);
+}
+/* make striped rows less conspicuous 
+   depending on version of data tables, may need one or more of the following selectors */
+html.dark .table-striped > tbody > tr:nth-of-type(odd),
+html.dark table.dataTable.stripe tbody tr.odd,
+html.dark table.dataTable.display tbody tr.odd {
+  background-color: #f9f9f911;
+}
+/* hover rows less conspicuous */
+html.dark .table-hover > tbody > tr:hover,
+html.dark table.dataTable.hover tbody tr:hover,
+html.dark table.dataTable.display tbody tr:hover {
+  background-color: #f5f5f522 !important;
+}
+
+/* override colors in R Markdown theme, with variables */
+body {
+  /* colors from variables - need "!important" so takes priority over settings elsewhere */
+  background: var(--background-color) !important;
+  color: var(--font-color) !important;
+}
+/* headings */
+h1, h2, h3, h4, h5, h6, .h1, .h2, .h3, .h4, .h5, .h6 {
+  color: var(--font-color) !important;
+}
+
+/* data tables div */
+div.datatables {
+  color: var(--font-color) !important;
+}
+/* table rows */
+table.dataTable tbody tr {
+  background-color: var(--background-color);
+}
+/* number of records */
+.dataTables_info {
+  color: var(--font-color) !important;
+}
+/* pagination for table */
+li.paginate_button > a {
+  background-color: var(--background-color) !important;
+  color: var(--font-color) !important;
+}
+/* disabled pagination buttons, less emphasis */
+li.paginate_button.disabled > a {
+  opacity: 0.7 !important;
+}
+```

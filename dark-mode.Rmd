@@ -80,7 +80,6 @@ output$chart <- highcharter::renderHighchart({
     # x axis is name
     highcharter::hc_xAxis(categories = df$name) %>%
     # y axis is bytes
-    # first stack: open
     highcharter::hc_add_series(
       name = "Size",
       data = df$size
