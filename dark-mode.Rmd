@@ -23,7 +23,7 @@ library(highcharter)
 
 Size of RStudio daily builds by platform from <https://dailies.rstudio.com/rstudio/latest/index.json>
 
-```{r, echo = FALSE, message = FALSE, warning = FALSE, cache = TRUE, cache.extra = Sys.Date()}
+```{r echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE, cache.extra=Sys.Date(), cache.path = "cache/"}
 # get JSON from RStudio latest daily builds, cache for 1 day
 raw_json <- jsonlite::fromJSON(
   "https://dailies.rstudio.com/rstudio/latest/index.json",
