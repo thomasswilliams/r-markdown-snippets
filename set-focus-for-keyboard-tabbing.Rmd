@@ -1,0 +1,69 @@
+---
+title: "set-focus-for-keyboard-tabbing.Rmd"
+subtitle: "Set focus to an interactive control, see post at [TBA]"
+author: "Thomas Williams <https://github.com/thomasswilliams>"
+output:
+  html_document:
+    theme: spacelab
+    mathjax: null # don't include Mathjax as per https://bookdown.org/yihui/rmarkdown/html-document.html
+    toc: false # no table of contents
+runtime: shiny
+---
+
+It's good practice to set the focus to a usable control in an interactive R Markdown file. Make sure you test in a browser - R Studio adds HTML elements for debugging that aren't present in deployed R Markdown files. 
+
+Depending on the theme, the focus indicator (highlight around the focused control) will be more or less prominent. The `spacelab` theme used here has a blue glow around the focused control.
+
+Some guidelines for tabbing from <https://www.csun.edu/universal-design-center/web-accessibility-criteria-tab-order>:
+
+> Tab order is important for proper navigation through a keyboard interface. The keyboard tab order must be coordinated with the structure of the webpage. The default keyboard navigation order must be logical and intuitive. The tab order should follow the visual flow of the page: left to right, top to bottom – header first, then main navigation, then page navigation (if present), and finally the footer.
+
+```{r, echo = FALSE}
+# create a text input
+# setting of focus via javascript, further down the page
+shiny::textInput("text_input", "Text input (1)", placeholder = "This input should have focus on load")
+
+# create a Selectize input
+shiny::selectizeInput("selectize_input", "Selectize input (2)", choices = c("a", "b", "c"))
+
+# create a normal dropdown (not Selectize)
+shiny::selectInput("select_input", "Select input (3)", choices = c("d", "e", "f"), selectize = FALSE)
+```
+
+<!-- links to set focus to inputs, pass HTML element id -->
+<a href="#" role="button" onclick="setFocusTo('#text_input');return false;">Click to set focus to text input (1) (after a short delay)</a>
+
+<!-- Selectize input HTML element IDs end with "-selectized"
+     setting focus will drop down the list -->
+<a href="#" role="button" onclick="setFocusTo('#selectize_input-selectized');return false;">Click to set focus to Selectize input (2), note will drop down the list</a>
+
+<a href="#" role="button" onclick="setFocusTo('#select_input');return false;">Click to set focus to select input (3), will only drop down the list on click or space bar/down arrow press</a>
+
+One issue I've found tabbing in an R Markdown file is that there may be elements that aren't visible that have a tab stop. Disabling Mathjax and the auto-generated table of contents (as I've done in this document) might help.
+
+```{js, echo = FALSE}
+// when page loads, set focus to text input
+// relies on jQuery for document ready (jQuery included with Shiny)
+$(function() {
+  setFocusTo("#text_input");
+});
+
+// set focus to passed HTML element after a short delay
+function setFocusTo(element) {
+  // set focus after 800 milliseconds
+  // useful as gives controls time to render, may need to adjust time to taste
+  setTimeout(function() {
+    $(element).focus();
+  }, 800);
+}
+```
+
+```{css, echo = FALSE}
+/* make default paragraph text a little bigger */
+p {
+  
+}
+blockquote {
+  font-size: inherit;
+}
+```
