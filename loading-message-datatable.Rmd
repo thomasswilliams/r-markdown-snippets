@@ -1,0 +1,126 @@
+---
+title: "loading-message-datatable.Rmd"
+subtitle: "Display loading & updating messages in DataTables, see https://thomasswilliams.github.io/development/r/2022/09/16/r-markdown-loading-message-datatable.html"
+author: "Thomas Williams <https://github.com/thomasswilliams>"
+output: html_document
+runtime: shiny
+---
+
+The two DataTables below, populated with random values, take the same amount of time to load and reload.
+
+The second DataTable displays a "loading" message when empty and an "updating" message when reloading. This gives useful feedback to users that something is happening.
+
+Click the "reload" button below to see the updating message.
+
+``` {r global, echo = FALSE, message = FALSE, warning = FALSE}
+# DataTable
+# https://rstudio.github.io/DT/
+library(DT)
+```
+
+```{r, echo = FALSE}
+# refresh button
+# note icons need "icon()" as per https://shiny.rstudio.com/reference/shiny/0.14/icon.html
+shiny::actionButton("refreshbutton", "Reload", icon = shiny::icon("arrows-rotate"))
+```
+
+<!-- basic two-column layout, start outer div and define multiple columns, adapted from
+     https://bookdown.org/yihui/rmarkdown-cookbook/multi-column.html -->
+<div style="display: grid; grid-template-columns: 1fr 1fr; grid-column-gap: 10px; margin-top: 2em;">
+<!-- start first column -->
+<div>
+```{r, echo = FALSE}
+# output placeholder for table 1
+DT::dataTableOutput("table1", width = "100%", height = "auto")
+```
+<!-- end first column -->
+</div>
+<!-- start second column -->
+<div>
+```{r, echo = FALSE}
+# output placeholder for table 2
+DT::dataTableOutput("table2", width = "100%", height = "auto")
+```
+<!-- end second column -->
+</div>
+<!-- end outer div -->
+</div>
+
+```{r, echo = FALSE}
+# random numbers 0-20 as per https://stackoverflow.com/a/19352289
+# 2 columns, 20 records
+df1 <- data.frame(replicate(2, sample(0:20, 20, rep = TRUE)))
+df2 <- data.frame(replicate(2, sample(0:20, 20, rep = TRUE)))
+
+# render the simplest possible datatable (same for both "table1" and "table2", just
+# for demo purposes)
+output$table1 <- DT::renderDataTable({
+  # render function is dependent on "refresh" button, so when refresh button is
+  # clicked, table will be re-rendered (this code will be run)
+  input$refreshbutton
+
+  # sleep for 3 seconds
+  Sys.sleep(3)
+
+  # return datatable from dataframe
+  DT::datatable(
+    df1
+  )
+})
+
+output$table2 <- DT::renderDataTable({
+  input$refreshbutton
+  Sys.sleep(3)
+  DT::datatable(
+    df2
+  )
+})
+```
+
+The loading and updating messages use the DataTable name and the following CSS:
+
+```{css}
+/* style body color to better differentiate from datatables */
+body {
+  background-color: #fafafb;
+}
+
+/* datatables div */
+#table1, #table2 {
+  background-color: #ffffff;
+}
+
+/* display message in empty DT datatable
+   this only occurs on initial load of datatable (subsequent loads leave the table
+   in place, styled with "recalculating" class to make the table inactive)
+   "table2" div elements will be empty, use CSS to display message */
+#table2:empty::after {
+  content: "Loading (please wait)...";
+  opacity: 0.5;
+  font-style: italic;
+}
+
+/* when table has the "recalculating" class applied, make the table less prominent */
+#table2.recalculating {
+  opacity: 0.1 !important;
+  /* need to position relatively so we can center "Updating" text */
+  position: relative;
+}
+
+/* display "Updating" message when table reloads (for example, on parameter change)
+   will be used when the table is already displayed */
+#table2.recalculating::before {
+  content: "Updating (please wait)...";
+  font-style: italic;
+  /* text should sit above table controls */
+  position: absolute;
+  /* centered above table as per https://stackoverflow.com/a/50958847 */
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%,-50%);
+  /* make text larger */
+  font-size: 1.6em;
+  /* content above controls */
+  z-index: 1000;
+}
+```
