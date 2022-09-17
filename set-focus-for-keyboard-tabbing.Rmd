@@ -1,16 +1,14 @@
 ---
 title: "set-focus-for-keyboard-tabbing.Rmd"
-subtitle: "Set focus to an interactive control, see post at [TBA]"
+subtitle: "Set keyboard focus to an interactive control, see post at [TBA]"
 author: "Thomas Williams <https://github.com/thomasswilliams>"
 output:
   html_document:
     theme: spacelab
-    mathjax: null # don't include Mathjax as per https://bookdown.org/yihui/rmarkdown/html-document.html
-    toc: false # no table of contents
 runtime: shiny
 ---
 
-It's good practice to set the focus to a usable control in an interactive R Markdown file. Make sure you test in a browser - R Studio adds HTML elements for debugging that aren't present in deployed R Markdown files. 
+It's good practice to set the focus to a usable control in an interactive R Markdown file. Make sure you test in a browser - RStudio may add HTML elements for debugging that aren't present in deployed R Markdown files on a Shiny server. 
 
 Depending on the theme, the focus indicator (highlight around the focused control) will be more or less prominent. The `spacelab` theme used here has a blue glow around the focused control.
 
@@ -39,7 +37,7 @@ shiny::selectInput("select_input", "Select input (3)", choices = c("d", "e", "f"
 
 <a href="#" role="button" onclick="setFocusTo('#select_input');return false;">Click to set focus to select input (3), will only drop down the list on click or space bar/down arrow press</a>
 
-One issue I've found tabbing in an R Markdown file is that there may be elements that aren't visible that have a tab stop. Disabling Mathjax and the auto-generated table of contents (as I've done in this document) might help.
+One issue I've found tabbing in an R Markdown file run from RStudio is that there may be elements that aren't visible that have a tab stop. You can test for yourself by tabbing through this document - is it clear where the keyboard focus is, after you pass the end of the document?
 
 ```{js, echo = FALSE}
 // when page loads, set focus to text input
@@ -59,10 +57,7 @@ function setFocusTo(element) {
 ```
 
 ```{css, echo = FALSE}
-/* make default paragraph text a little bigger */
-p {
-  
-}
+/* styling for quote */
 blockquote {
   font-size: inherit;
 }
