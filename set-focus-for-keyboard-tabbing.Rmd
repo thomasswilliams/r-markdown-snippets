@@ -1,6 +1,6 @@
 ---
 title: "set-focus-for-keyboard-tabbing.Rmd"
-subtitle: "Set keyboard focus to an interactive control, see post at [TBA]"
+subtitle: "Set keyboard focus to an interactive control, see post at https://thomasswilliams.github.io/development/r/2022/09/18/r-markdown-set-keyboard-focus.html"
 author: "Thomas Williams <https://github.com/thomasswilliams>"
 output:
   html_document:
