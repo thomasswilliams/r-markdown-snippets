@@ -1,6 +1,6 @@
 ---
 title: "reload-data.Rmd"
-subtitle: "Reload parameters on button click without full page reload, see blog post at  https://thomasswilliams.github.io/development/r/2022/09/22/r-markdown-reload-with-button.html"
+subtitle: "Reload parameters on button click without full page reload, see blog post at  https://thomasswilliams.github.io/development/r/2022/09/22/r-markdown-reload-parameter-with-button.html"
 author: "Thomas Williams <https://github.com/thomasswilliams>"
 output:
   html_document:
