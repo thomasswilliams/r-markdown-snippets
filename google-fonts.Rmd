@@ -1,0 +1,117 @@
+---
+title: "google-fonts.Rmd"
+subtitle: "Use a Google Font with an existing Shiny theme, see blog post at  https://thomasswilliams.github.io/development/r/2022/09/26/r-markdown-google-fonts.html"
+author: "Thomas Williams <https://github.com/thomasswilliams>"
+output:
+  html_document:
+    theme: spacelab
+runtime: shiny
+---
+
+This R Markdown file demonstrates referencing Google Font `Lobster` and using it with DT DataTables and Highcharter, using the `spacelab` theme.
+
+The Simpsons quotes on this page are sourced from the Simpsons quote API at <https://thesimpsonsquoteapi.glitch.me/>.
+
+<!-- link to Google Font -->
+<link href="https://fonts.googleapis.com/css2?family=Lobster&display=swap" rel="stylesheet">
+
+``` {r global, echo = FALSE, message = FALSE, warning = FALSE}
+# reference a couple of packages for demo
+# A Simple and Robust JSON Parser and Generator for R
+# https://cran.r-project.org/package=jsonlite
+library(jsonlite)
+# DataTable
+# https://rstudio.github.io/DT/
+library(DT)
+# Highcharter wrapper for Highcharts
+# https://jkunst.com/highcharter/
+library(highcharter)
+# dplyr for piping with "%>%"
+library(dplyr)
+```
+
+```{r, echo = FALSE, message = FALSE, warning = FALSE, cache = TRUE, cache.extra = Sys.Date(), cache.path = "cache/"}
+# call Simpsons quote API, get 10 quotes, cache for 1 day
+# keep the "quote" and "character" fields
+# store as data frame
+df <- jsonlite::fromJSON(
+  "https://thesimpsonsquoteapi.glitch.me/quotes?count=10",
+  flatten = TRUE
+) %>%
+  dplyr::select(quote, character)
+```
+
+```{r, echo = FALSE}
+# placeholder for datatable
+DT::dataTableOutput("table", width = "100%", height = "auto")
+# output placeholder for highchart
+# adapted from https://github.com/jbkunst/highcharter-shiny/blob/master/01-get-started/app.R
+highcharter::highchartOutput("chart")
+
+# create new Highchart theme with "Lobster" Google Font as per https://stackoverflow.com/a/64737095
+# as at Highcharter 0.9.4 (Sep 2022), this looks to create own Google Fonts link in
+# older style e.g. https://fonts.googleapis.com/css?family=Lobster
+# so, new fonts may not be available using this method
+new_font_theme <- highcharter::hc_theme(
+  chart = list(
+    style = list(
+      # set just new font name
+      fontFamily = "Lobster"
+    )
+  )
+)
+
+# render basic data table, display Simpsons quotes
+output$table <- DT::renderDataTable({
+  DT::datatable(
+    df
+  )
+})
+
+# create a new data frame, add a column that counts quotes by character using dplyr
+# adapted from https://www.tutorialspoint.com/how-to-find-the-count-of-each-category-in-an-r-data-frame-column
+df_count <- df %>% dplyr::group_by(character) %>% dplyr::summarise(count = n())
+
+# render chart
+output$chart <- highcharter::renderHighchart({
+  # create chart
+  highcharter::highchart() %>%
+    # set theme as per https://stackoverflow.com/a/64737095
+    highcharter::hc_add_theme(new_font_theme) %>%
+    # x axis is character
+    highcharter::hc_xAxis(categories = df_count$character) %>%
+    # series: number of quotes
+    highcharter::hc_add_series(
+      data = df_count,
+      name = "Number of quotes",
+      hcaes(x = character, y = count),
+      type = "column"
+    ) %>%
+    # title
+    highcharter::hc_title(
+      text = "Number of quotes by character",
+      style = list(fontWeight = "normal", fontSize = "16px"),
+      align = "left"
+    ) %>%
+    # no legend (single series only)
+    highcharter::hc_legend(
+      enabled = FALSE
+    )
+})
+```
+
+```{css, echo = FALSE}
+/* override font family with new font family
+   need to override all places "spacelab" theme explicitly sets fonts */
+body {
+  /* new font "Lobster", add to start of "spacelab" stack
+     Google Fonts link needs to be referenced elsewhere */
+  font-family: Lobster, "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+h1, h2, h3, h4, h5, h6, .h1, .h2, .h3, .h4, .h5, .h6 {
+  font-family: Lobster, "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+.tooltip, .popover {
+  font-family: Lobster, "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+```
