@@ -1,0 +1,95 @@
+---
+title: "debounce-input.Rmd"
+subtitle: "Wait until a user finishes input without making too many updates, see blog post at https://thomasswilliams.github.io/development/r/2022/10/03/r-markdown-debounce-input.html"
+author: "Thomas Williams <https://github.com/thomasswilliams>"
+output: html_document
+runtime: shiny
+---
+
+Two DataTables are populated by random values. The number of values is controlled by the slider below.
+
+The second DataTable "debounces" input from the slider to update 800 milliseconds after the slider pauses. Try sliding the slider (at different speeds) and noticing how often the table on the left updates versus the table on the right.
+
+For demo purposes, I've added a delay to simulate loading. This is just a demo and far from perfect as sometimes the tables have to wait for each other which would not happen if I only had the debounced table.
+
+In a real R Markdown page, debouncing input can help to reduce "jumpiness" due to multiple (including some unneeded) updates to tables and charts, and limiting calls to an API or database (for example, typing in a search).
+
+Debouncing in Shiny is documented at https://rstudio.github.io/shiny/reference/debounce.html.
+
+``` {r global, echo = FALSE, message = FALSE, warning = FALSE}
+# DataTable
+# https://rstudio.github.io/DT/
+library(DT)
+# async: Asynchronous HTTP and computation in R 
+# https://github.com/gaborcsardi/async
+library(async)
+```
+
+```{r, echo = FALSE}
+# slider input
+shiny::sliderInput("number_records", "Number of random values", min = 10, max = 50, value = 20)
+```
+
+<!-- responsive two-column layout adapted from
+     https://bookdown.org/yihui/rmarkdown-cookbook/multi-column.html and
+     https://css-tricks.com/look-ma-no-media-queries-responsive-layouts-using-css-grid/ -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); grid-column-gap: 10px;">
+<!-- start first column -->
+<div>
+```{r, echo = FALSE}
+# output placeholder for table 1
+DT::dataTableOutput("table1", width = "100%", height = "auto")
+```
+<!-- end first column -->
+</div>
+<!-- start second column -->
+<div>
+```{r, echo = FALSE}
+# output placeholder for table 2
+DT::dataTableOutput("table2", width = "100%", height = "auto")
+```
+<!-- end second column -->
+</div>
+<!-- end outer div -->
+</div>
+
+```{r, echo = FALSE}
+# render datatables
+output$table1 <- DT::renderDataTable({
+  # render function is dependent on slider, when slider changes so will number of records in table
+  number_records = input$number_records
+  # random numbers 0-20 as per https://stackoverflow.com/a/19352289
+  # 2 columns, number of records controlled by slider
+  df <- data.frame(replicate(2, sample(0:20, number_records, rep = TRUE)))
+
+  # delay using async package for 1 second
+  # simulate API or database call, or calculation
+  async::delay(1)$then(function(...)
+    # return datatable from dataframe
+    DT::datatable(
+      df
+    )
+  )
+})
+
+output$table2 <- DT::renderDataTable({
+  # table 2 "debounces" the slider value so is updated less frequently
+  # only gets once every 800 milliseconds
+  # adapted from https://community.rstudio.com/t/trying-to-understand-how-to-use-debounce-in-shiny/47933
+  number_records <- reactive(input$number_records)
+  # debounced variable
+  # debounce time can be tuned - example set to 800 milliseconds
+  number_records_d <- number_records %>%
+    debounce(800)
+
+  # accessing the debounced value needs to done via function (brackets after debounced variable name)
+  df <- data.frame(replicate(2, sample(0:20, number_records_d(), rep = TRUE)))
+
+  # same delay as table 1
+  async::delay(1)$then(function(...)
+    DT::datatable(
+      df
+    )
+  )
+})
+```
