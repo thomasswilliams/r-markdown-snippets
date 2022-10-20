@@ -1,0 +1,38 @@
+---
+title: "dotenv.Rmd"
+subtitle: "Read secrets from a .env file, see blog post at https://thomasswilliams.github.io/development/r/2022/10/20/r-markdown-env-file.html"
+author: "Thomas Williams <https://github.com/thomasswilliams>"
+output: html_document
+runtime: shiny
+---
+
+For this R Markdown file to run correctly, create a file called `.env` in the same directory, with contents:
+
+```
+DATABASE_USER=test_user
+DATABASE_PASSWORD="correct horse battery staple"
+
+```
+
+See the blog post at <https://thomasswilliams.github.io/development/r/2022/10/20/r-markdown-env-file.html> for background.
+
+```{r, echo = FALSE}
+# dotenv for loading a .env file as environment variables
+# https://github.com/gaborcsardi/dotenv
+library(dotenv)
+
+# load the file (defaults to “.env” file)
+# will throw error if file is not found, or file is not valid
+dotenv::load_dot_env()
+
+# get values from environment variables
+# will be returned as character vectors (see docs at https://www.rdocumentation.org/packages/base/versions/3.6.2/topics/Sys.getenv)
+# will be NULL if the passed name does not exist
+# also used to get other system environment variables like “TEMP”, “PATH”, "SHELL" etc.
+user <- Sys.getenv("DATABASE_USER")
+password <- Sys.getenv("DATABASE_PASSWORD")
+
+# do something with values
+paste0("User: ", user)
+paste0("Password: ", password)
+```
