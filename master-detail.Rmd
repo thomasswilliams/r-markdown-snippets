@@ -1,0 +1,183 @@
+---
+title: "master-detail.Rmd"
+subtitle: "Create a master/detail view in R Markdown, see blog post at https://thomasswilliams.github.io/development/r/2022/11/16/r-markdown-master-detail.html"
+author: "Thomas Williams <https://github.com/thomasswilliams>"
+output: html_document
+runtime: shiny
+---
+
+``` {r global, echo = FALSE, message = FALSE, warning = FALSE}
+# reference a couple of packages for demo
+# A Simple and Robust JSON Parser and Generator for R
+# https://cran.r-project.org/package=jsonlite
+library(jsonlite)
+# DataTable
+# https://rstudio.github.io/DT/
+library(DT)
+# dplyr for %>% piping
+library(dplyr)
+# htmlwidgets (part of Shiny)
+library(htmlwidgets)
+```
+
+This page simulates a "master-detail" pattern by:
+
+- checking if the page was passed an ID in query string
+- if not, display a table with all records - this is the default "master" view
+- if an ID was passed, display just that ID ("detail" view)
+
+```{r, echo = FALSE}
+# !diagnostics suppress=session
+# line above prevents error messages for unknown symbols (e.g. around Shiny "session$" variable)
+
+# were we passed an ID to show detail for? Initially NULL
+detail_id <- NULL
+# get (optional) passed detail ID in query string; may be missing
+# "session$" is special Shiny variable, needs to be wrapped in reactive
+qs_detail_id <- shiny::reactive(
+  shiny::parseQueryString(session$clientData$url_search)[["id"]]
+)
+# if we were passed a detail ID in query string, set page-level variable
+# need special syntax to "unwrap" reactive value, see https://mastering-shiny.org/reactive-motivation.html
+if (!is.null(shiny::isolate(qs_detail_id()))) {
+  detail_id <- shiny::isolate(qs_detail_id())
+}
+```
+
+```{r, echo = FALSE, message = FALSE, warning = FALSE, cache = TRUE, cache.extra = Sys.Date(), cache.path = "cache/"}
+# call Star Wars movie API, get film titles & details, cache for 1 day
+df <- jsonlite::fromJSON(
+  "https://swapi.dev/api/films/",
+  flatten = TRUE
+)
+
+# create new dataframe from results JSON array by just getting fields we want
+df.results <- df$results %>%
+  dplyr::select(episode_id, title, opening_crawl, director, release_date)
+```
+
+<!-- somewhat hacky method to hide table, if passed a detail ID
+     uses HTML comment in Markdown, inline R
+     adapted from see https://stackoverflow.com/a/49989271 -->
+`r if (is.character(detail_id)) {"<!--"}`
+Data from the Star Wars API at <https://swapi.dev/> - thanks!
+
+```{r, echo = FALSE}
+# everything from here until a HTML closing comment will be run if there's no detail ID
+
+# placeholder for datatable
+DT::dataTableOutput("table", width = "100%", height = "auto")
+
+# render datatable, display title and ID
+output$table <- DT::renderDataTable({
+  DT::datatable(
+    # bind to results dataframe, only show episode ID and title
+    df.results %>%
+      dplyr::select(episode_id, title),
+    options = list(
+      # only display table (no paging, no info) in output
+      dom = "t",
+      # default ordering is episode_id
+      order = list(
+        list(1L, "asc")
+      ),
+      # number of records visible (i.e. all)
+      pageLength = 9999L,
+      # specific styles and output for columns
+      columnDefs = list(
+        list(
+          # hide auto-created row ID from output (column 0)
+          visible = FALSE, targets = 0L
+        ),
+        list(
+          # set episode_id column header and width
+          title = "Episode #",
+          targets = 1L,
+          width = "120px"
+        ),
+        list(
+          # set column header and make title clickable link
+          title = "Title <small>(click to view detail)</small>",
+          targets = 2L,
+          # on click, goes to this page passing a detail ID in query string
+          # detail ID ("episode_id") is in first column, use that for link
+          render = htmlwidgets::JS(
+            "function(data, type, row, meta) {
+              return '<a href=\"master-detail.Rmd?id=' + row[1] + '\" target=\"_self\" title=\"View details\"><strong>' + data + '</strong></a>';
+            }"
+          )
+        )
+      )
+    )
+  )
+})
+
+# following this R block needs to be output a HTML closing comment
+# using the same criteria as at the start - i.e. if passed a detail ID
+```
+Clicking a title will take you to the "detail" view (by passing a query string to this page containing an ID which is the episode number).
+
+The table uses the excellent `DT` package, see <https://rstudio.github.io/DT/>.
+
+See my blog post at <https://thomasswilliams.github.io/development/r/2022/08/19/r-markdown-querystring.html> for more info on passing a query string in R Markdown.
+`r if (is.character(detail_id)) {"-->"}`
+
+<!-- only show details, if passed a detail ID -->
+`r if (!is.character(detail_id)) {"<!--"}`
+You selected:
+<div id="details-outer">
+```{r, echo = FALSE}
+
+# get just the result from the dataframe that matches the passed detail ID
+selected_result <- df.results[df.results$episode_id == detail_id, ]
+# get fields to display from selected result
+title <- selected_result$title
+opening_crawl <- selected_result$opening_crawl
+director <- selected_result$director
+release_date <- selected_result$release_date
+
+# basic display of details
+# this "detail" view could potentially be used for anything e.g. a chart, a data entry form, further selections
+shiny::uiOutput("details_view")
+
+# render details as paragraphs for demo purposes
+output$details_view <- shiny::renderUI({
+  shiny::tagList(
+    tags$p(
+      tags$strong("Episode #:"),
+      detail_id
+    ),
+    tags$p(
+      tags$strong("Title:"),
+      title
+    ),
+    tags$p(
+      tags$strong("Description:"),
+      opening_crawl
+    ),
+    tags$p(
+      tags$strong("Directed by:"),
+      director
+    ),
+    tags$p(
+      tags$strong("Released:"),
+      # get just the release year, first 4 characters
+      substr(release_date, 1, 4)
+    )
+  )
+})
+
+# careful of HTML comments inside dynamic rendering, can muck up rendering
+# the HTML link below returns to the "master" view by linking to this same page
+# without a detail ID query string
+```
+</div>
+<a href="master-detail.Rmd"><span class="glyphicon glyphicon-arrow-left" aria-hidden="true"></span> Return to the table</a>
+`r if (!is.character(detail_id)) {"-->"}`
+
+```{css, echo = FALSE}
+#section-details-outer {
+  padding-left: 1em;
+  border-left: 4px solid #acbad4;
+}
+```
